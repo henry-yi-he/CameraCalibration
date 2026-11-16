@@ -17,7 +17,7 @@ ROOT = Path(__file__).resolve().parent
 IMAGES = ROOT / "images"
 RESULTS = ROOT / "results"
 PATTERN = (9, 6)  # 每行、每列的内部角点数；打印板共有 10×7 个方格。
-MIN_VIEWS = 10  # 本实验沿用原流程的有效照片数下限。
+MIN_VIEWS = 10  # 本实验沿用原流程的有效照片数的下限。
 
 
 def read_photo(path):
