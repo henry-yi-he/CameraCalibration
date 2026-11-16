@@ -15,3 +15,4 @@ Thumbs.db
 /results/**
 !/results/**/
 !/results/**/.gitkeep
+output/pdf/相机标定作业.pdf
