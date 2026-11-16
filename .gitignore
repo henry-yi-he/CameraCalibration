@@ -7,3 +7,11 @@ __pycache__/
 .DS_Store
 Thumbs.db
 .idea/
+
+# Local captures and generated calibration artifacts
+/images/*
+!/images/README.md
+!/images/capture_log.example.csv
+/results/**
+!/results/**/
+!/results/**/.gitkeep

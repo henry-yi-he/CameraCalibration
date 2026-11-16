@@ -1,45 +1,66 @@
-# 手机相机标定实验
+# CameraCalibration · 棋盘格相机标定
 
-本项目对应《机器视觉与三维重建》的手机相机标定上机作业。实验流程是：制作并测量棋盘格 → 用同一手机摄像头采集照片 → 检测角点 → 计算内参、畸变系数和逐张外参 → 评价重投影误差 → 对图像去畸变 → 撰写报告。
+用手机或普通相机拍摄一组棋盘格照片，通过 Python 和 OpenCV 求解相机内参、镜头畸变和每张照片的外参。程序同时输出逐张重投影误差、角点标注图和去畸变对比图。适用于普通针孔相机模型。
 
-## 文件结构
+## 获取与安装
 
-```text
-CameraCalibration/
-├── README.md                  项目说明
-├── .gitignore                 忽略本地环境和临时文件
-├── requirements.txt           Python 依赖
-├── board/
-│   ├── board_info.md          标定板规格与实测尺寸
-│   ├── checkerboard_9x6_25mm_A4.pdf  A4 横向打印版
-│   └── generate_checkerboard.py     打印版生成脚本
-├── images/
-│   ├── README.md              拍摄与原始照片存放说明
-│   └── capture_log.csv        拍摄记录
-├── calibration.py             主程序入口（待实现）
-├── results/
-│   ├── corners/               角点检测可视化
-│   ├── undistorted/           原图、去畸变图及对比图
-│   ├── figures/               重投影误差等分析图
-│   ├── camera_params.npz       标定参数（运行后生成）
-│   └── calibration_result.txt  可读结果（运行后生成）
-└── report/
-    └── report.md              实验报告草稿
+可以在 GitHub 页面选择 **Code → Download ZIP** 并解压，也可以用 Git 下载：
+
+```shell
+git clone https://github.com/henry-yi-he/CameraCalibration.git
+cd CameraCalibration
 ```
 
-主程序目前只有说明，尚未执行标定；标明“运行后生成”的结果文件目前尚不存在。目录中的 `.gitkeep` 只用于保留空目录。
+在包含 `calibration.py` 的目录中运行以下命令。已验证的 Python 版本为 3.11。已有 Python 环境时可直接执行最后一行。
 
-## 数据约定
+```shell
+conda create -n Calibration python=3.11 -y
+conda activate Calibration
+python -m pip install -r requirements.txt
+```
 
-- 默认计划使用 **9 × 6 个内部角点**的棋盘格，对应 **10 × 7 个方格**。方格边长以打印后实测值为准，单位为 mm，记在 `board/board_info.md`。
-- 将手机原始照片直接放入 `images/`，建议按 `01.jpg`、`02.jpg` 顺序命名。保留原始文件，不覆盖或压缩。若手机输出 HEIC，后续程序需增加读取支持，或先转成不改变像素尺寸的常用格式。
-- 使用同一物理摄像头、拍摄模式、焦距档位和图像分辨率。建议采集 20–30 张不同位置、倾角和距离的照片，至少保留约 15 张角点检测正确且视角有差异的照片。
-- 在 `images/capture_log.csv` 记录手机、镜头、分辨率及拍摄情况；报告中使用实际测得的数据，示例数字不能当作实验结果。
-- `results/` 只存程序生成的结果；实验报告放在 `report/`。参数文件中的逐张外参需要与原始照片文件名一一对应。
+## 拍摄与标定
 
-## 下一步
+1. 打开 [A4 棋盘格 PDF](board/checkerboard_9x6_25mm_A4.pdf)，横向按实际大小（100%）打印，固定在平板上。图案为 10 × 7 个方格，对应 9 × 6 个内部角点。用尺量连续几格的总长度，除以格数得到实际边长，单位为毫米。
+2. 使用同一镜头、焦距档位、拍摄模式和分辨率，拍摄约 20–30 张照片。在棋盘完整入镜的前提下，改变倾角、距离和画面位置。程序需要至少 10 张检出完整角点且原始像素尺寸一致的照片。
+3. 把 JPG、JPEG 或 PNG 原图放进 `images/`，可保留原文件名。使用 HEIC 的相机可先导出为保留原分辨率、方向一致的 JPEG。
+4. 运行标定。下例中的 24.8 是示例，请换成你的实测边长：
 
-1. 准备平整的棋盘格并填写 `board/board_info.md`。
-2. 拍摄并导入原始照片，填写 `images/capture_log.csv`。
-3. 实现 `calibration.py`，依次完成角点检测、标定、误差计算与去畸变。
-4. 将真实结果和分析写入 `report/report.md`。
+```shell
+python calibration.py --square-mm 24.8
+```
+
+直接运行 `python calibration.py` 也能估计内参和畸变，此时平移量以一个方格的边长为单位。PyCharm 用户可打开项目目录、选用装有上述依赖的解释器，直接运行该脚本。
+
+多台相机可分别指定照片目录和结果目录。脚本只扫描指定目录的第一层。重复使用同一输出目录会覆盖同名结果，请为每组数据选择独立目录。
+
+```shell
+python calibration.py --images "data/camera2" --output "results/camera2" --square-mm 24.8
+```
+
+## 读取与检查结果
+
+| 默认路径 | 用途 |
+| --- | --- |
+| `results/calibration_result.txt` | 查看内参矩阵、畸变系数、每张照片的外参和误差，以及跳过照片的原因 |
+| `results/camera_params.npz` | 从 Python 读取标定参数，按 `filenames` 将外参和误差对应至原图 |
+| `results/corners/` | 核对彩色角点是否落在棋盘的交叉点上 |
+| `results/figures/reprojection_error.png` | 比较各照片的 RMS 重投影误差，单位为像素 |
+| `results/undistorted/comparison.jpg` | 首张有效照片的原图（左）与去畸变结果（右） |
+
+```python
+import numpy as np
+
+with np.load("results/camera_params.npz") as params:
+    print(params["camera_matrix"])  # fx、fy、cx、cy 均以像素计
+    print(params["dist_coeffs"])    # k1, k2, p1, p2, k3
+    print(params["image_size"])     # 宽、高，使用原始像素方向
+```
+
+程序读取图像时忽略 EXIF 显示旋转。将参数用于新图像时，应采用相同的镜头、分辨率、裁剪方式和像素方向。整体 RMS 反映在参与标定的照片上，预测角点与检测角点之间的偏差。
+
+## 随附材料
+
+- [标定板记录](board/board_info.md)、[拍摄记录空表](images/capture_log.example.csv)和[实验报告模板](report/report.md)可用于课程实验。
+- 如需重新生成打印版，在环境中安装 `reportlab` 后运行 `python board/generate_checkerboard.py`。随附 PDF 可直接打印。
+- 项目采用 [MIT 许可证](LICENSE)。
