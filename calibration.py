@@ -49,6 +49,34 @@ def find_corners(gray):
     return cv2.cornerSubPix(gray, corners, (5, 5), (-1, -1), criteria)
 
 
+def draw_corner_grid(gray, corners):
+    """在灰度底图上按检测顺序连线，每行使用一种颜色。"""
+    overlay = cv2.cvtColor(gray, cv2.COLOR_GRAY2BGR)
+    cols, rows = PATTERN
+    grid = corners.reshape(rows, cols, 2)
+    # 线宽随分辨率增加，并受最小格距限制，防止远处的小方格被遮住。
+    row_steps = np.linalg.norm(np.diff(grid, axis=1), axis=2)
+    col_steps = np.linalg.norm(np.diff(grid, axis=0), axis=2)
+    spacing = min(row_steps.min(), col_steps.min())
+    width = max(1, round(min(max(gray.shape) / 450, spacing / 14)))
+    radius = max(2, 2 * width)
+    pixels = np.rint(grid).astype(np.int32)
+
+    # BGR 顺序：红、橙、黄、绿、青、蓝。较细的斜线表示换行。
+    colors = [(35, 45, 230), (0, 145, 250), (0, 210, 225),
+              (45, 195, 35), (205, 185, 0), (230, 65, 30)]
+    for index, row in enumerate(pixels):
+        color = colors[index % len(colors)]
+        if index:
+            cv2.line(overlay, pixels[index - 1, -1], row[0], color,
+                     max(1, width // 2), cv2.LINE_AA)
+        cv2.polylines(overlay, [row], False, color, width, cv2.LINE_AA)
+        for point in row:
+            cv2.circle(overlay, point, radius, color, -1, cv2.LINE_AA)
+            cv2.circle(overlay, point, max(1, radius // 4), (245, 245, 245), -1, cv2.LINE_AA)
+    return overlay
+
+
 def collect_views(paths, corner_dir):
     names, observations, skipped = [], [], []
     image_size = None
@@ -61,15 +89,15 @@ def collect_views(paths, corner_dir):
         if image_size is not None and size != image_size:
             skipped.append(f"{path.name} 像素尺寸 {size} 与标定组不一致")
             continue
-        corners = find_corners(cv2.cvtColor(image, cv2.COLOR_BGR2GRAY))
+        gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+        corners = find_corners(gray)
         if corners is None:
             skipped.append(f"{path.name} 未找到完整的 9×6 角点")
             continue
         image_size = size
         names.append(path.name)
         observations.append(corners)
-        cv2.drawChessboardCorners(image, PATTERN, corners, True)
-        save_image(corner_dir / path.name, image)
+        save_image(corner_dir / path.name, draw_corner_grid(gray, corners))
         print(f"{path.name} 检出 {len(corners)} 个角点")
     for reason in skipped:
         print(reason)
